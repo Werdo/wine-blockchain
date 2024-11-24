@@ -1,0 +1,29 @@
+# Build files
+build/
+*.o
+*.out
+
+# Dependencies
+node_modules/
+vendor/
+
+# Environment files
+.env
+.env.*
+
+# Log files
+*.log
+
+# System files
+.DS_Store
+.vscode/
+.idea/
+
+# Blockchain data
+blockchain_data/
+config/*.ini
+!config/example.ini
+
+# Private keys and sensitive data
+*.key
+*.pem
