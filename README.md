@@ -11,18 +11,29 @@ EOS-based blockchain implementation for the wine industry, enabling bottle token
 - Automated deployment scripts
 
 ## Setup
+Para usar estos scripts:
 
-1. Install dependencies:
+1. Crea los directorios necesarios:
+```bash
+mkdir -p ~/wine-blockchain/scripts/monitoring
+```
+
+2. Copia cada script en su ubicación correspondiente y hazlos ejecutables:
+```bash
+chmod +x ~/wine-blockchain/scripts/*.sh
+chmod +x ~/wine-blockchain/scripts/monitoring/*.sh
+```
+3. Install dependencies:
 ```bash
 ./scripts/install-dependencies.sh
 ```
 
-2. Configure nodes:
+4. Configure nodes:
 ```bash
 ./scripts/setup-node.sh <node-name>
 ```
 
-3. Setup monitoring:
+5. Setup monitoring:
 ```bash
 ./scripts/monitoring/setup-elasticsearch.sh
 ./scripts/monitoring/setup-kibana.sh
