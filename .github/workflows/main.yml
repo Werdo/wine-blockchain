@@ -1,0 +1,120 @@
+name: Wine Blockchain CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  test:
+    name: Test Smart Contracts
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup eosio
+        run: |
+          wget https://github.com/EOSIO/eos/releases/download/v2.1.0/eosio_2.1.0-1-ubuntu-20.04_amd64.deb
+          sudo apt install -y ./eosio_2.1.0-1-ubuntu-20.04_amd64.deb
+          
+      - name: Setup eosio.cdt
+        run: |
+          wget https://github.com/EOSIO/eosio.cdt/releases/download/v1.8.1/eosio.cdt_1.8.1-1-ubuntu-20.04_amd64.deb
+          sudo apt install -y ./eosio.cdt_1.8.1-1-ubuntu-20.04_amd64.deb
+          
+      - name: Compile Contracts
+        run: |
+          cd smart-contracts/bottle-token
+          eosio-cpp -abigen bottle.cpp -o bottle.wasm
+          
+      - name: Run Tests
+        run: |
+          ./scripts/test/run_tests.sh
+
+  build:
+    name: Build and Push Docker Images
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Build and push node image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: docker/node.dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/node:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/node:${{ github.sha }}
+            
+      - name: Build and push monitoring image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: docker/monitoring.dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/monitoring:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/monitoring:${{ github.sha }}
+
+  deploy-staging:
+    name: Deploy to Staging
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-1
+          
+      - name: Deploy to staging
+        run: |
+          ./scripts/deploy/deploy-staging.sh
+
+  deploy-production:
+    name: Deploy to Production
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: https://blockchain.wine-platform.com
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-1
+          
+      - name: Deploy to production
+        run: |
+          ./scripts/deploy/deploy-production.sh
