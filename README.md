@@ -20,6 +20,8 @@ mkdir -p ~/wine-blockchain/scripts/monitoring
 
 2. Copia cada script en su ubicación correspondiente y hazlos ejecutables:
 ```bash
+chmod +x set-permissions.sh
+./set-permissions.sh
 chmod +x ~/wine-blockchain/scripts/*.sh
 chmod +x ~/wine-blockchain/scripts/monitoring/*.sh
 ```
