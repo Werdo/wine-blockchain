@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blockchain-node
+  namespace: wine-blockchain
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: blockchain-node
+  template:
+    metadata:
+      labels:
+        app: blockchain-node
+    spec:
+      containers:
+      - name: node
+        image: ghcr.io/werdo/wine-blockchain/node:latest
+        ports:
+        - containerPort: 8888
+        - containerPort: 9876
+        resources:
+          requests:
+            memory: "4Gi"
+            cpu: "2"
+          limits:
+            memory: "8Gi"
+            cpu: "4"
+        volumeMounts:
+        - name: blockchain-data
+          mountPath: /data
+      volumes:
+      - name: blockchain-data
+        persistentVolumeClaim:
+          claimName: blockchain-data
