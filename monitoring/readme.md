@@ -1,5 +1,7 @@
 This updated script includes:
 
+IMPORTANT SET ON SCRIPT PASSWORD: <SETPASSWORD>
+IMPORTANT SET IP ADDRESS <YOURIP> 
 Port conflict resolution (using 9201, 5602 instead of default ports)
 Proper repository setup
 Service cleanup before installation
