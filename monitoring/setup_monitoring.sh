@@ -5,7 +5,7 @@ set -e
 set -x
 
 # Variables
-NODE_IP="167.235.79.28"
+NODE_IP="SET_IP"
 ES_VERSION="8.11.1"
 KIBANA_VERSION="8.11.1"
 ES_PORT="9201"  # Changed from 9200
@@ -57,7 +57,7 @@ services:
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=true
-      - ELASTIC_PASSWORD=wineBlockchain2024
+      - ELASTIC_PASSWORD=<SETPASSWORD>
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
       - bootstrap.memory_lock=true
     ulimits:
@@ -81,7 +81,7 @@ services:
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
       - ELASTICSEARCH_USERNAME=elastic
-      - ELASTICSEARCH_PASSWORD=wineBlockchain2024
+      - ELASTICSEARCH_PASSWORD=<SETPASSWORD>
       - SERVER_HOST=0.0.0.0
       - SERVER_PUBLICBASEURL=http://${NODE_IP}:${KIBANA_PORT}
     ports:
@@ -96,7 +96,7 @@ services:
     image: docker.elastic.co/logstash/logstash:${ES_VERSION}
     environment:
       - ELASTICSEARCH_USERNAME=elastic
-      - ELASTICSEARCH_PASSWORD=wineBlockchain2024
+      - ELASTICSEARCH_PASSWORD=<SETPASSWORD>
     volumes:
       - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf
     ports:
@@ -152,7 +152,7 @@ output {
   elasticsearch {
     hosts => ["elasticsearch:9200"]
     user => "elastic"
-    password => "wineBlockchain2024"
+    password => "<SETPASSWORD>"
     index => "wine-blockchain-%{type}-%{+YYYY.MM.dd}"
   }
 }
@@ -253,7 +253,7 @@ echo "Kibana: http://${NODE_IP}:${KIBANA_PORT}"
 echo "Elasticsearch: http://${NODE_IP}:${ES_PORT}"
 echo "Logstash: http://${NODE_IP}:${LOGSTASH_PORT}"
 echo "Username: elastic"
-echo "Password: wineBlockchain2024"
+echo "Password: <SETPASSWORD>"
 
 # Create verification script
 cat > verify_setup.sh << EOF
@@ -262,7 +262,7 @@ echo "Checking Docker containers..."
 docker ps
 
 echo "Checking Elasticsearch..."
-curl -u elastic:wineBlockchain2024 http://localhost:${ES_PORT}
+curl -u elastic:<SETPASSWORD> http://localhost:${ES_PORT}
 
 echo "Checking Kibana..."
 curl http://localhost:${KIBANA_PORT}
