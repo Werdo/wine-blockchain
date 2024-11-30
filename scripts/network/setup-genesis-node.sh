@@ -7,7 +7,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 # Configuración del nodo génesis
-GENESIS_IP="168.119.238.152"
+GENESIS_IP="167.235.79.28"
 GENESIS_P2P_PORT=9876
 GENESIS_HTTP_PORT=8888
 CHAIN_ID="wine$(date +%s)"
@@ -26,6 +26,13 @@ generate_key_pair() {
     cleos create key --to-console | tail -n 2 | awk '{print $3}'
 }
 
+# Cleanup
+cleanup() {
+    pkill nodeos 2>/dev/null || true
+    sleep 2
+    rm -rf $NODES_DIR/genesis/data/*
+}
+
 # Configuración del nodo génesis
 setup_genesis_node() {
     local node_dir="$NODES_DIR/genesis"
@@ -37,32 +44,26 @@ setup_genesis_node() {
 
     # Crear config.ini para nodo génesis
     cat > $node_dir/config/config.ini << EOF
-# Genesis Node Configuration
 chain-state-db-size-mb = 8192
 reversible-blocks-db-size-mb = 340
 contracts-console = true
 verbose-http-errors = true
 abi-serializer-max-time-ms = 2000
-max-transaction-time = 100
+max-transaction-time = 1000
 
-# HTTP and P2P Endpoints
 http-server-address = 0.0.0.0:$GENESIS_HTTP_PORT
 p2p-listen-endpoint = 0.0.0.0:$GENESIS_P2P_PORT
 
-# Plugins
 plugin = eosio::producer_plugin
 plugin = eosio::producer_api_plugin
 plugin = eosio::chain_api_plugin
 plugin = eosio::http_plugin
-plugin = eosio::state_history_plugin
 plugin = eosio::net_plugin
 plugin = eosio::net_api_plugin
 
-# Producer Configuration
 producer-name = genesis
 signature-provider = $pub_key=KEY:$priv_key
 
-# Allow all incoming connections
 p2p-accept-transactions = true
 allowed-connection = any
 max-clients = 100
@@ -70,7 +71,6 @@ connection-cleanup-period = 30
 sync-fetch-span = 100
 enable-stale-production = true
 pause-on-startup = false
-max-transaction-time = 1000
 EOF
 
     # Crear genesis.json
@@ -125,36 +125,29 @@ setup_peer_node() {
 
     # Crear config.ini para nodo peer
     cat > $node_dir/config/config.ini << EOF
-# Peer Node Configuration
 chain-state-db-size-mb = 8192
 reversible-blocks-db-size-mb = 340
 contracts-console = true
 verbose-http-errors = true
 abi-serializer-max-time-ms = 2000
-max-transaction-time = 100
+max-transaction-time = 1000
 
-# HTTP and P2P Endpoints
 http-server-address = 0.0.0.0:$http_port
 p2p-listen-endpoint = 0.0.0.0:$p2p_port
 
-# Plugins
 plugin = eosio::producer_plugin
 plugin = eosio::producer_api_plugin
 plugin = eosio::chain_api_plugin
 plugin = eosio::http_plugin
-plugin = eosio::state_history_plugin
 plugin = eosio::net_plugin
 plugin = eosio::net_api_plugin
 
-# Connect to Genesis Node
 p2p-peer-address = $GENESIS_IP:$GENESIS_P2P_PORT
 
-# Producer Configuration
 producer-name = $node_name
 signature-provider = $pub_key=KEY:$priv_key
 EOF
 
-    # Guardar información de claves
     echo "Node: $node_name" >> $CONFIG_DIR/peer_keys.txt
     echo "Public Key: $pub_key" >> $CONFIG_DIR/peer_keys.txt
     echo "Private Key: $priv_key" >> $CONFIG_DIR/peer_keys.txt
@@ -176,6 +169,8 @@ start_node() {
             --config-dir $node_dir/config \
             --data-dir $node_dir/data \
             --genesis-json $GENESIS_DIR/genesis.json \
+            --disable-replay-opts \
+            --delete-all-blocks \
             >> $node_dir/nodeos.log 2>&1 &
     else
         nodeos \
@@ -185,12 +180,16 @@ start_node() {
             >> $node_dir/nodeos.log 2>&1 &
     fi
     
-    sleep 2
+    sleep 5
     
     if pgrep -x "nodeos" > /dev/null; then
         echo -e "${GREEN}Nodo $node_name iniciado correctamente${NC}"
+        tail -n 50 $node_dir/nodeos.log
     else
         echo -e "${RED}Error al iniciar nodo $node_name${NC}"
+        echo "Últimas líneas del log:"
+        tail -n 50 $node_dir/nodeos.log
+        exit 1
     fi
 }
 
@@ -201,6 +200,7 @@ echo -e "${YELLOW}=== Configuración de Red Blockchain EOS ===${NC}"
 read -p "¿Es este el nodo génesis? (s/n): " IS_GENESIS
 if [[ $IS_GENESIS =~ ^[Ss]$ ]]; then
     NODE_TYPE="genesis"
+    cleanup
     setup_genesis_node
     start_node "genesis"
     
@@ -228,6 +228,7 @@ fi
 # Crear script de verificación de conexiones
 cat > $CONFIG_DIR/check_node.sh << EOF
 #!/bin/bash
+echo "=== Verificando estado del nodo ==="
 curl -s http://localhost:${GENESIS_HTTP_PORT}/v1/chain/get_info | jq
 echo
 curl -s http://localhost:${GENESIS_HTTP_PORT}/v1/net/connections | jq
